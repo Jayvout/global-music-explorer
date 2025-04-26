@@ -1,0 +1,10 @@
+Flask
+Flask-Session
+spotipy
+python-dotenv
+musicbrainzngs
+geopy
+wikipedia-api
+requests
+beautifulsoup4
+

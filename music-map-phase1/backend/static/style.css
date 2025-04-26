@@ -1,0 +1,67 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    padding: 10px 0;
+}
+
+/* Give the map container a specific height */
+#map {
+    height: 600px; /* You can adjust this value */
+    width: 100%;
+}
+
+.custom-marker {
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    position: relative;
+    transform: translate(-50%, -50%);
+    transition: transform 0.2s ease;
+}
+
+.marker-image {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.custom-marker:before {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid #ffffff;
+}
+
+.custom-marker:hover, .custom-marker.highlighted {
+    transform: translate(-50%, -50%) scale(1.2);
+    z-index: 10;
+}
+
+.custom-marker.highlighted .marker-image {
+    border: 3px solid #1DB954;
+    box-shadow: 0 0 15px rgba(29, 185, 84, 0.8);
+}
+
+.artist-list-item {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.artist-list-item:hover {
+    background-color: rgba(29, 185, 84, 0.1);
+}

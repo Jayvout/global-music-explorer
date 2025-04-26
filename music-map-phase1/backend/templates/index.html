@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Music Explorer</title>
+
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CSS Variables --- */
+        :root {
+            --primary-color: #1DB954;
+            --primary-dark: #1aa34a;
+            --primary-gradient: linear-gradient(135deg, #1DB954, #1ed760);
+            --secondary-color: #191414;
+            --accent-color: #ff6b6b;
+            --light-bg: #f9f9f9;
+            --dark-bg: #121212;
+            --medium-dark-bg: #1e1e1e;
+            --dark-text: #333;
+            --light-text: #ffffff;
+            --medium-text: #b3b3b3;
+            --muted-text: #888;
+            --border-color-dark: #2a2a2a;
+            --border-color-light: rgba(255, 255, 255, 0.1);
+            --border-radius: 12px;
+            --border-radius-lg: 16px;
+            --box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            --box-shadow-hover: 0 12px 32px rgba(0,0,0,0.3);
+            --glass-bg: rgba(30, 30, 30, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --sidebar-width: 360px;
+            --mobile-breakpoint: 992px;
+            --cluster-small-color: #1DB954;
+            --cluster-medium-color: #f1d075;
+            --cluster-large-color: #f28cb1;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            display: flex; flex-direction: column; height: 100vh; line-height: 1.6;
+        }
+        body.loading { cursor: wait; }
+        body.loading .loading-overlay { opacity: 1; visibility: visible; pointer-events: auto; }
+
+        /* --- Header --- */
+        header {
+            background: var(--dark-bg);
+            color: var(--light-text);
+            padding: 1rem 1.5rem;
+            position: relative;
+            z-index: 10;
+            box-shadow: var(--box-shadow);
+            flex-shrink: 0;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .header-content { display: flex; justify-content: space-between; align-items: center; max-width: 100%; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+        .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .logo h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .logo-icon { font-size: 1.6rem; color: var(--primary-color); }
+
+        /* --- Controls & Buttons --- */
+        .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            box-shadow: var(--box-shadow);
+            letter-spacing: 0.3px;
+        }
+        .btn i { font-size: 0.95em; }
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--box-shadow-hover);
+        }
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--primary-dark);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+            border-radius: inherit;
+        }
+        .btn-primary:hover::after {
+            opacity: 1;
+        }
+        .btn-secondary { background-color: transparent; color: var(--light-text); border: 1px solid var(--border-color-light); padding: 6px 10px; }
+        .btn-secondary:hover { background-color: rgba(255, 255, 255, 0.1); transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.3); }
+        .btn-tertiary { background-color: rgba(255, 255, 255, 0.1); color: var(--medium-text); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .btn-tertiary:hover { background-color: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.3); color: var(--light-text); }
+        .btn-tertiary.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); box-shadow: 0 0 8px rgba(29, 185, 84, 0.5); }
+
+        /* --- Main Layout: Sidebar + Map --- */
+        .main-container { display: flex; flex-direction: row; flex-grow: 1; position: relative; overflow: hidden; }
+
+        /* --- Artist Panel (Sidebar) --- */
+        #artist-panel {
+            width: var(--sidebar-width);
+            height: 100%;
+            background-color: var(--glass-bg);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            flex-shrink: 0;
+            transition: var(--transition);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .panel-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color-dark); flex-shrink: 0; color: var(--light-text); }
+        .panel-title { font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .panel-title i { color: var(--primary-color); }
+        #artist-list { flex-grow: 1; overflow-y: auto; overflow-x: hidden; padding: 5px 0; color: var(--light-text); }
+        #artist-list::-webkit-scrollbar { width: 8px; }
+        #artist-list::-webkit-scrollbar-track { background: var(--border-color-dark); }
+        #artist-list::-webkit-scrollbar-thumb { background: #535353; border-radius: 4px; }
+        #artist-list::-webkit-scrollbar-thumb:hover { background: #6a6a6a; }
+
+        /* Enhanced Artist List Item */
+        .artist-list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            border-radius: var(--border-radius-lg);
+            margin: 0 10px 8px 10px;
+            transition: var(--transition);
+            background-color: rgba(255, 255, 255, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+        .artist-list-item:last-child { border-bottom: 1px solid var(--border-color-dark); }
+        .artist-list-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+            border-color: var(--primary-color);
+            box-shadow: var(--box-shadow);
+        }
+        .artist-list-item.active { background-color: rgba(29, 185, 84, 0.15); border-left: 3px solid var(--primary-color); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+        .artist-list-item.active .artist-name { color: var(--primary-color); font-weight: 700; }
+        .artist-rank { font-size: 0.9rem; font-weight: bold; color: var(--medium-text); min-width: 25px; text-align: center; margin-right: 15px; }
+        .artist-list-image { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 1px solid #333; transition: transform 0.2s; flex-shrink: 0; background-color: #333; }
+        .artist-list-item:hover .artist-list-image { transform: scale(1.05); }
+        .artist-info { flex-grow: 1; margin-right: 10px; display: flex; flex-direction: column; overflow: hidden; }
+        .artist-name { font-weight: 600; color: var(--light-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; font-size: 0.95rem; }
+        .artist-origin, .artist-genres { font-size: 0.8rem; color: var(--medium-text); display: flex; align-items: center; gap: 5px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .artist-origin i, .artist-genres i { font-size: 0.75rem; color: var(--muted-text); flex-shrink: 0; text-align: center; width: 12px; }
+        .artist-actions { flex-shrink: 0; margin-left: auto; padding-left: 10px; display: flex; align-items: center; }
+        .spotify-play-icon { color: var(--primary-color) !important; font-size: 18px !important; padding: 8px !important; border-radius: 50% !important; background: rgba(255, 255, 255, 0.9); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; display: inline-flex !important; align-items: center; justify-content: center; line-height: 1; text-decoration: none; }
+        .spotify-play-icon:hover { transform: scale(1.1); background: white; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15); }
+
+        /* --- Map Container --- */
+        #map-container { flex-grow: 1; height: 100%; position: relative; background-color: #000; }
+        #map { height: 100%; width: 100%; opacity: 0.9; transition: all 0.3s ease; }
+        .map-overlay { position: absolute; bottom: 20px; left: 10px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(5px); color: var(--light-text); border-radius: var(--border-radius); padding: 10px 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 5; max-width: 280px; border: 1px solid var(--border-color-light); }
+        .map-overlay h3 { font-size: 1rem; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; color: var(--primary-color); }
+        .map-overlay h3 i { color: inherit; }
+        .map-info { font-size: 0.85rem; line-height: 1.4; color: var(--medium-text); }
+
+        /* --- Custom Marker Styles --- */
+        .custom-marker { cursor: pointer; transition: transform 0.15s ease-out; width: auto; height: auto; background: none; border: none; box-shadow: none; display: flex; justify-content: center; align-items: center; }
+        .custom-marker .marker-image { width: 40px; height: 40px; border-radius: 50%; background-size: cover; background-position: center; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.45); transition: all 0.2s ease; background-color: #535353; }
+        .custom-marker:not(.is-cluster).hover .marker-image, .custom-marker:not(.is-cluster).highlighted .marker-image { border-color: var(--primary-color); transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .custom-marker.highlighted { z-index: 10; }
+        .custom-marker.is-cluster .cluster-marker-circle { display: flex; justify-content: center; align-items: center; border-radius: 50%; color: white; font-weight: bold; font-family: 'Inter', sans-serif; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.45); transition: transform 0.2s ease-out, background-color 0.2s ease-out, width 0.2s ease-out, height 0.2s ease-out; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); }
+        .custom-marker.is-cluster .cluster-marker-circle span { line-height: 1; padding: 2px; }
+        .custom-marker.cluster-small .cluster-marker-circle { width: 38px; height: 38px; background-color: var(--cluster-small-color); font-size: 13px; }
+        .custom-marker.cluster-medium .cluster-marker-circle { width: 48px; height: 48px; background-color: var(--cluster-medium-color); color: #333; font-size: 15px; }
+        .custom-marker.cluster-large .cluster-marker-circle { width: 58px; height: 58px; background-color: var(--cluster-large-color); font-size: 17px; }
+        .custom-marker.is-cluster.hover, .custom-marker.is-cluster.highlighted { transform: scale(1.15); z-index: 10; }
+        .custom-marker.is-cluster.highlighted .cluster-marker-circle { border-color: var(--primary-color); }
+
+        /* --- Enhanced Popup Styles --- */
+        .mapboxgl-popup { max-width: 300px !important; z-index: 15; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .mapboxgl-popup-content {
+            background-color: var(--glass-bg);
+            color: var(--light-text);
+            padding: 0;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--box-shadow-hover);
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .mapboxgl-popup-close-button { color: #aaa; font-size: 1.5rem; padding: 5px; right: 5px; top: 5px; transition: color 0.2s ease; z-index: 3; }
+        .mapboxgl-popup-close-button:hover { background-color: rgba(255, 255, 255, 0.1); border-radius: 50%; color: #fff; }
+
+        /* Single Artist Popup Specific Styles */
+        .popup-header { position: relative; height: 100px; overflow: hidden; }
+        .popup-artist-image { width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--medium-dark-bg); box-shadow: 0 3px 8px rgba(0,0,0,0.4); position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); z-index: 2; background-color: #535353; object-fit: cover; }
+        .popup-content { padding: 55px 15px 15px 15px; text-align: center; }
+        .popup-artist-name { margin-top: 0; margin-bottom: 5px; font-weight: bold; font-size: 1.1rem; color: #FFFFFF; }
+        .popup-artist-origin, .popup-artist-genres { font-size: 0.85rem; margin-bottom: 8px; color: var(--medium-text); display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .popup-artist-origin i, .popup-artist-genres i { color: var(--muted-text); font-size: 0.8rem; }
+        .popup-artist-genres small { color: inherit; }
+        .popup-spotify-link { display: inline-flex; align-items: center; gap: 6px; background-color: var(--primary-color); color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.9rem; font-weight: 500; margin-top: 10px; transition: all 0.2s ease; }
+        .popup-spotify-link:hover { background-color: var(--primary-dark); transform: scale(1.05); }
+        .popup-spotify-link i { margin-right: 5px; }
+        .spotify-embed-container { margin-top: 15px; border-radius: var(--border-radius); overflow: hidden; border: 1px solid #444; }
+        .spotify-embed-container iframe { display: block; border: none; width: 100%; height: 80px; }
+
+        /* Cluster Popup Styles */
+        .cluster-popup .popup-title { margin: 0; padding: 10px 15px; font-size: 1rem; font-weight: 600; color: var(--light-text); background-color: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--border-color-light); text-align: center; }
+        .artist-cluster-list { max-height: 200px; overflow-y: auto; padding: 5px 0; }
+        .artist-cluster-list::-webkit-scrollbar { width: 6px; }
+        .artist-cluster-list::-webkit-scrollbar-track { background: #333; }
+        .artist-cluster-list::-webkit-scrollbar-thumb { background: #666; border-radius: 3px; }
+        .artist-cluster-list::-webkit-scrollbar-thumb:hover { background: #888; }
+        .cluster-artist-item { display: flex; align-items: center; padding: 8px 15px; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid var(--border-color-dark); }
+        .cluster-artist-item:last-child { border-bottom: none; }
+        .cluster-artist-item:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .cluster-artist-rank { font-size: 12px; font-weight: bold; color: var(--muted-text); min-width: 20px; text-align: right; margin-right: 10px; }
+        .cluster-artist-img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 1px solid #444; background-color: #535353; flex-shrink: 0; }
+        .cluster-artist-info { flex-grow: 1; display: flex; align-items: center; justify-content: space-between; overflow: hidden; }
+        .cluster-artist-name { font-size: 13px; font-weight: 500; color: #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 5px; }
+        .cluster-spotify-link { color: var(--primary-color); font-size: 16px; flex-shrink: 0; padding: 3px; transition: color 0.2s; }
+        .cluster-spotify-link:hover { color: #fff; }
+
+        /* --- NEW: Track Preview Styles --- */
+        .popup-tracks {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color-light);
+            text-align: left; /* Align track list left */
+        }
+        .popup-tracks h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--medium-text);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .track-list-container {
+            max-height: 160px; /* Limit height */
+            overflow-y: auto;
+            padding-right: 5px; /* Space for scrollbar */
+        }
+        /* Scrollbar for track list */
+        .track-list-container::-webkit-scrollbar { width: 6px; }
+        .track-list-container::-webkit-scrollbar-track { background: #333; }
+        .track-list-container::-webkit-scrollbar-thumb { background: #666; border-radius: 3px; }
+        .track-list-container::-webkit-scrollbar-thumb:hover { background: #888; }
+
+        .track-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            margin-bottom: 4px;
+            border-bottom: 1px solid var(--border-color-dark);
+        }
+         .track-item:last-child { border-bottom: none; }
+
+        .track-name {
+            font-size: 0.85rem;
+            color: var(--light-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .track-play-button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem; /* Larger icon */
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+            transition: color 0.2s ease, transform 0.2s ease;
+            flex-shrink: 0;
+        }
+        .track-play-button:hover {
+            color: #fff;
+            transform: scale(1.1);
+        }
+        .track-play-button .fa-pause { /* Style for pause icon */
+            color: var(--primary-dark);
+        }
+        .track-list-loading, .track-list-error {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--medium-text);
+            padding: 10px;
+        }
+        .track-list-error { color: #ff8a8a; }
+
+
+        /* --- Loading State --- */
+        .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 20; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; pointer-events: none; }
+        .loading-spinner { width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.2); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- Flash Message --- */
+        #flash-message { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background: linear-gradient(to right, var(--primary-color), var(--secondary-color)); color: var(--light-text); padding: 12px 25px; border-radius: 4px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3); z-index: 1000; transition: transform 0.4s ease; pointer-events: none; max-width: 90%; text-align: center; }
+        #flash-message.show { transform: translateX(-50%) translateY(0); }
+
+        /* --- Empty State --- */
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--muted-text); display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+        .empty-state i { font-size: 3rem; margin-bottom: 15px; color: #555; }
+        .empty-state p { font-size: 1rem; color: var(--medium-text); line-height: 1.5; }
+        .empty-state.initial-load i { color: var(--primary-color); opacity: 0.8; }
+
+        /* --- Responsive Adjustments --- */
+        @media (max-width: 1200px) { :root { --sidebar-width: 320px; } }
+        @media (max-width: var(--mobile-breakpoint)) {
+            .main-container { flex-direction: column; }
+            #artist-panel { width: 100%; height: 45vh; border-right: none; border-bottom: 1px solid var(--border-color-dark); }
+            #map-container { height: 55vh; }
+            header { padding: 0.8rem 1rem; }
+            .header-content { gap: 10px; justify-content: space-between; }
+            .logo h1 { font-size: 1.2rem; } .logo-icon { font-size: 1.4rem; }
+            .controls { justify-content: flex-end; gap: 8px; }
+            .btn { padding: 5px 10px; font-size: 0.85rem; }
+            .map-overlay { max-width: calc(100% - 20px); font-size: 0.8rem; padding: 8px 12px; bottom: 10px; }
+            .map-overlay h3 { font-size: 0.9rem; } .map-overlay p { font-size: 0.8rem; }
+            .artist-list-item { padding: 10px 15px; margin-left: 5px; margin-right: 5px; }
+            .artist-list-image { width: 45px; height: 45px; }
+            .mapboxgl-popup { max-width: 280px !important; }
+            .popup-artist-image { width: 70px; height: 70px; bottom: -35px; }
+            .popup-content { padding-top: 45px; }
+        }
+         @media (max-width: 480px) {
+             #artist-panel { height: 50vh; } #map-container { height: 50vh; }
+             .artist-rank { display: none; }
+             .artist-list-item { padding: 8px 10px; margin-left: 5px; margin-right: 5px; }
+             .artist-list-image { width: 40px; height: 40px; margin-right: 10px;}
+             .artist-name { font-size: 0.9rem; } .artist-origin, .artist-genres { font-size: 0.75rem; }
+             .artist-actions a { font-size: 1rem; }
+             .spotify-play-icon { padding: 6px !important; font-size: 16px !important; }
+             .controls { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 5px; }
+             .header-content { flex-direction: column; align-items: stretch; }
+             .logo { justify-content: center; margin-bottom: 5px; }
+             .mapboxgl-popup { max-width: calc(100vw - 40px) !important; }
+             #flash-message { width: calc(100% - 20px); bottom: 10px; }
+             .popup-tracks h4 { font-size: 0.85rem; }
+             .track-name { font-size: 0.8rem;}
+             .track-play-button { font-size: 1.1rem; }
+         }
+
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-globe-americas logo-icon"></i>
+                <h1>Global Music Explorer</h1>
+            </div>
+            <div class="controls">
+                {% if not logged_in %}
+                    <a href="{{ url_for('login') }}" class="btn btn-primary"><i class="fab fa-spotify"></i> Connect with Spotify</a>
+                {% else %}
+                    <button class="btn btn-tertiary time-range-btn" data-range="short_term" title="Top Artists (Last Month)"><i class="fas fa-calendar-day"></i> Month</button>
+                    <button class="btn btn-tertiary time-range-btn active" data-range="medium_term" title="Top Artists (Last 6 Months)"><i class="fas fa-calendar-alt"></i> 6 Months</button> <button class="btn btn-tertiary time-range-btn" data-range="long_term" title="Top Artists (All Time)"><i class="fas fa-calendar-check"></i> All Time</button>
+                    <button id="fetch-artists-btn" class="btn btn-primary" style="display: none;"><i class="fas fa-sync-alt"></i> Get Artists</button>
+                    <a href="{{ url_for('logout') }}" id="logout-button" class="btn btn-secondary" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <aside id="artist-panel">
+            <div class="panel-header">
+                 <div class="panel-title"> <i class="fas fa-music"></i> Your Top Artists </div>
+            </div>
+            <div id="artist-list">
+                {% if not logged_in %}
+                <div class="empty-state"> <i class="fas fa-link"></i> <p>Connect Spotify to map your music world.</p> </div>
+                {% else %}
+                <div class="empty-state initial-load"> <i class="fas fa-headphones-alt"></i> <p>Select a time range above to load your map.</p> </div>
+                {% endif %}
+            </div>
+        </aside>
+         <main id="map-container">
+            <div id="map"></div>
+            <div class="map-overlay">
+                <div class="map-info">
+                    <h3><i class="fas fa-info-circle"></i> Explore Origins</h3>
+                    <p>Click markers or list items. Use buttons above to change time range.</p>
+                </div>
+            </div>
+            <div class="loading-overlay"> <div class="loading-spinner"></div> </div>
+        </main>
+    </div>
+
+    <div class="flash-message" id="flash-message"></div>
+
+    <audio id="audio-player" style="display: none;"></audio>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
+
+    <script>
+        // --- Global Helper Functions ---
+
+        // Flash message function
+        function showFlashMessage(message, duration = 4000) {
+            const flashElement = document.getElementById('flash-message');
+            if (!flashElement) { console.warn("Flash message element not found"); return; }
+            flashElement.textContent = message;
+            flashElement.classList.add('show');
+            if (flashElement.timeoutId) clearTimeout(flashElement.timeoutId);
+            flashElement.timeoutId = setTimeout(() => {
+                flashElement.classList.remove('show');
+                flashElement.timeoutId = null;
+            }, duration);
+        }
+
+        // Creates HTML for the Mapbox Popup (Single Artist - Dark Theme)
+        function createEnhancedPopupHTML(properties) {
+            properties = properties || {};
+            let genresText = 'N/A';
+            try {
+                // Genre processing logic... (same as before)
+                let genresArray = [];
+                if (typeof properties.genres === 'string' && properties.genres.startsWith('[')) { try { genresArray = JSON.parse(properties.genres || '[]'); } catch(e){} }
+                else if (Array.isArray(properties.genres)) { genresArray = properties.genres; }
+                else if (typeof properties.genres === 'string' && properties.genres.length > 0) { genresArray = properties.genres.split(',').map(g => g.trim()).filter(g => g); }
+                if (Array.isArray(genresArray) && genresArray.length > 0) { genresText = genresArray.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(', '); }
+            } catch (parseError) { console.warn("Could not process genres:", properties.genres, parseError); }
+
+            const imageUrl = properties.image_url || `https://placehold.co/80x80/535353/FFF?text=${(properties.name || '?').charAt(0)}`;
+            const placeholderUrl = `https://placehold.co/80x80/535353/333?text=?`;
+            const artistId = properties.id || ''; // Get artist ID for track fetching
+
+            let popupHTML = `
+                <div class="popup-header">
+                    <img src="${imageUrl}" class="popup-artist-image" alt="${properties.name || 'Artist'}" onerror="this.onerror=null; this.src='${placeholderUrl}'">
+                </div>
+                <div class="popup-content">
+                    <h3 class="popup-artist-name">${properties.name || 'Unknown Artist'}</h3>
+                    <div class="popup-artist-origin"> <i class="fas fa-map-marker-alt"></i> ${properties.origin || 'Origin unknown'} </div>
+                    <div class="popup-artist-genres"> <i class="fas fa-tag"></i> <small>${genresText}</small> </div>
+
+                    ${properties.spotify_url && properties.spotify_url !== 'null' ? `
+                        <a href="${properties.spotify_url}" target="_blank" class="popup-spotify-link" onclick="event.stopPropagation();">
+                            <i class="fab fa-spotify"></i> Listen on Spotify
+                        </a>` : ''}
+                    <div class="popup-tracks" data-artist-id="${artistId}">
+                        <h4>Top Tracks Preview</h4>
+                        <div class="track-list-container">
+                            <div class="track-list-loading"> <i class="fas fa-spinner fa-spin"></i> Loading tracks... </div>
+                            <div class="track-list" style="display: none;"></div> <div class="track-list-error" style="display: none;"></div> </div>
+                    </div>
+
+                </div>`; // Close popup-content
+            return popupHTML;
+        }
+
+        // Creates HTML for one item in the sidebar artist list (Dark Theme)
+        function createArtistListItem(artist, rank) {
+            artist = artist || {};
+            // Logic for origin, image URL, genres... (same as before)
+            const hasLocation = artist.lat != null && artist.lon != null && !isNaN(artist.lat) && !isNaN(artist.lon);
+            const originText = hasLocation ? (artist.origin || 'Origin Unknown') : `${artist.origin ? artist.origin + ' (No map data)' : 'Origin Unknown'}`;
+            const imageUrl = artist.image_url || `https://placehold.co/50x50/333/FFF?text=${(artist.name || '?').charAt(0)}`;
+            const placeholderUrl = 'https://placehold.co/50x50/333/888?text=?';
+            let genresListText = 'No genre data';
+            try {
+                let genresArray = [];
+                 if (typeof artist.genres === 'string' && artist.genres.startsWith('[')) { try { genresArray = JSON.parse(artist.genres || '[]'); } catch(e){} }
+                else if (Array.isArray(artist.genres)) { genresArray = artist.genres; }
+                else if (typeof artist.genres === 'string' && artist.genres.length > 0) { genresArray = artist.genres.split(',').map(g => g.trim()).filter(g => g); }
+                if (Array.isArray(genresArray) && genresArray.length > 0) { genresListText = genresArray.slice(0, 3).map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(', '); if (genresArray.length > 3) genresListText += '...'; }
+            } catch(e) { console.warn("Error processing genres for list item", e); }
+            const artistId = artist.id || `no-id-${Math.random().toString(16).slice(2)}`;
+            const itemId = `artist-item-${artistId}`;
+
+            // Use template literal for cleaner HTML generation
+            return `
+                <div class="artist-list-item" id="${itemId}" data-artist-id="${artistId}" onclick="window.highlightMarker('${artistId}')"> <div class="artist-rank">${rank}</div>
+                    <img src="${imageUrl}" class="artist-list-image" alt="${artist.name || 'Artist'}" onerror="this.onerror=null; this.src='${placeholderUrl}'">
+                    <div class="artist-info">
+                        <span class="artist-name">${artist.name || 'Unknown Artist'}</span>
+                        <span class="artist-origin"> <i class="fas fa-map-marker-alt"></i> ${originText} </span>
+                        <span class="artist-genres" title="${Array.isArray(artist.genres) ? artist.genres.join(', ') : ''}"> <i class="fas fa-tag"></i> ${genresListText} </span>
+                    </div>
+                    <div class="artist-actions">
+                        ${artist.spotify_url && artist.spotify_url !== 'null' ? `
+                            <a href="${artist.spotify_url}" target="_blank" class="spotify-play-icon" title="Open ${artist.name || ''} in Spotify" onclick="event.stopPropagation();">
+                                <i class="fab fa-spotify"></i>
+                            </a>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Placeholder highlight function (will be overridden by script.js)
+        // Defined here to prevent errors if script.js loads late
+        if (typeof window.highlightMarker !== 'function') {
+            window.highlightMarker = function(artistId) {
+                console.warn("Placeholder highlightMarker called for ID:", artistId, "- Ensure script.js overrides this.");
+                document.querySelectorAll('.artist-list-item.active').forEach(item => item.classList.remove('active'));
+                const listItem = document.querySelector(`.artist-list-item[data-artist-id='${artistId}']`);
+                if (listItem) {
+                     listItem.classList.add('active');
+                     listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</body>
+</html>
